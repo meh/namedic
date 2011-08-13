@@ -15,6 +15,8 @@ require 'refining'
 class Module
   refine_method :method_added do |old, *args|
     @__last_method__ = args.first
+
+    ap self
   
     if @__to_namedify__
       namedic(instance_method(@__last_method__), *@__to_namedify__)
@@ -26,22 +28,27 @@ end
 
 class Object
   def namedic (*args)
-    if args.first.nil?
-      begin
-        auto_namedic(instance_method(@__last_method__))
-      rescue
-        self.class.instance_eval {
+    if self.is_a?(Module)
+      if args.first.nil?
           auto_namedic(instance_method(@__last_method__))
-        }
+      elsif ![Method, UnboundMethod].any? { |klass| args.first.is_a?(klass) }
+        @__to_namedify__ = args
       end
-    elsif ![Method, UnboundMethod].any? { |klass| args.first.is_a?(klass) }
-      @__to_namedify__ = args
+    else
+      self.class.instance_eval {
+        if args.first.nil?
+          auto_namedic(instance_method(@__last_method__))
+        elsif ![Method, UnboundMethod].any? { |klass| args.first.is_a?(klass) }
+          @__to_namedify__ = args
+        end
+      }
     end and return
 
     @__to_auto_namedify__ = @__to_namedify__ = false
 
     options = Hash[
       :optional => [],
+      :alias    => {},
       :rest     => []
     ].merge(args.last.is_a?(Hash) ? args.pop : {})
 
@@ -54,14 +61,26 @@ class Object
         rest       = args
         args       = []
 
+        # fix alias parameters
+        parameters.dup.each {|name, value|
+          if options[:alias].has_key?(name)
+            parameters[options[:alias][name]] = value
+            parameters.delete(name)
+          end
+        }
+
+        # check if there are unknown parameters
         parameters.keys.each {|parameter|
           raise ArgumentError, "#{parameter} is an unknown parameter" unless names.member?(parameter)
         }
 
+        # check for missing required parameters
         (names - parameters.keys - options[:optional].map { |param| param.is_a?(Hash) ? param.keys : param }.flatten.compact).tap {|required|
           raise ArgumentError, "the following required parameters are missing: #{required.join(', ')}" unless required.empty?
         }
 
+        # fill the arguments array
+        # TODO: try to not add nil for the last optional parameters
         names.each_with_index {|name, index|
           if parameters.has_key?(name)
             if options[:rest].member?(name)
