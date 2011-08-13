@@ -15,8 +15,6 @@ require 'refining'
 class Module
   refine_method :method_added do |old, *args|
     @__last_method__ = args.first
-
-    ap self
   
     if @__to_namedify__
       namedic(instance_method(@__last_method__), *@__to_namedify__)
