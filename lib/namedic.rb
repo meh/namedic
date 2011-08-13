@@ -11,14 +11,13 @@
 #++
 
 require 'refining'
-require 'ap'
 
 class Module
   refine_method :method_added do |old, *args|
+    @__last_method__ = args.first
+  
     if @__to_namedify__
-      namedic(instance_method(args.first), *@__to_namedify__)
-    elsif @__always_namedic__ or @__to_auto_namedify__
-      auto_namedic(instance_method(args.first))
+      namedic(instance_method(@__last_method__), *@__to_namedify__)
     end
     
     old.call(*args)
@@ -28,50 +27,75 @@ end
 class Object
   def namedic (*args)
     if args.first.nil?
-      @__to_auto_namedify__ = true
-    elsif !args.first.is_a?(Method)
+      begin
+        auto_namedic(instance_method(@__last_method__))
+      rescue
+        self.class.instance_eval {
+          auto_namedic(instance_method(@__last_method__))
+        }
+      end
+    elsif ![Method, UnboundMethod].any? { |klass| args.first.is_a?(klass) }
       @__to_namedify__ = args
     end and return
 
-    @__to_auto_namedify__ = false
-    @__to_namedify__      = false
+    @__to_auto_namedify__ = @__to_namedify__ = false
 
     options = Hash[
       :optional => [],
-      :rest     => false
+      :rest     => []
     ].merge(args.last.is_a?(Hash) ? args.pop : {})
 
     method = args.shift
     names  = args
 
     method.owner.refine_method method.name do |old, *args|
-      if (args.length != 1 || !args.first.is_a?(Hash)) || (options[:rest] && !args.last.is_a?(Hash))
-        return old.call(*args) 
+      unless (args.length != 1 || !args.first.is_a?(Hash)) || (options[:rest] && !args.last.is_a?(Hash))
+        parameters = args.pop
+        rest       = args
+        args       = []
+
+        parameters.keys.each {|parameter|
+          raise ArgumentError, "#{parameter} is an unknown parameter" unless names.member?(parameter)
+        }
+
+        (names - parameters.keys - options[:optional].map { |param| param.is_a?(Hash) ? param.keys : param }.flatten.compact).tap {|required|
+          raise ArgumentError, "the following required parameters are missing: #{required.join(', ')}" unless required.empty?
+        }
+
+        names.each_with_index {|name, index|
+          if parameters.has_key?(name)
+            if options[:rest].member?(name)
+              args.push(*parameters[name])
+            else
+              args << parameters[name]
+            end
+          else
+            args << nil
+          end
+        }
       end
-
-      parameters = args.pop
-      rest       = args
-      args       = []
-
-      raise ArgumentError, "#{key} is an unknown parameter" unless parameters.keys.all? {|parameter|
-        names.member?(parameter)
-      }
-
-      (parameters.keys - options[:optional].map { |(name, value)| name }).tap {|required|
-        raise ArgumentError, "#{required.join(', ')} are required" unless required.empty?
-      }
-
-      names.each {|name|
-      }
 
       old.call(*args)
     end
   end
 
   def auto_namedic (method)
+    names   = []
+    options = { :rest => [], :optional => [] }
+
     method.parameters.map {|how, name|
-      
+      if name
+        names << name
+        
+        options[:optional] << name if how == :opt
+        options[:rest]     << name if how == :rest
+      else
+        names          << rand.to_s
+        options[:rest] << names.last
+      end
     }
+
+    namedic(method, *names, options)
   end
 
   def always_namedic
