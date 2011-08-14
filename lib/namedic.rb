@@ -43,11 +43,13 @@ class Namedic
 
     options[:optional] = Hash[if options[:optional].is_a?(Range)
       names[options[:optional]]
+    elsif options[:optional].is_a?(Hash)
+      [options[:optional]]
     else
       options[:optional]
     end.map {|opt|
       if opt.is_a?(Hash)
-        [opt.to_a]
+        opt.to_a
       else
         [[opt, nil]]
       end
@@ -67,6 +69,9 @@ class Namedic
     parameters.dup.each {|name, value|
       if options[:alias].has_key?(name)
         parameters[options[:alias][name]] = value
+        parameters.delete(name)
+      elsif name.is_a?(Integer) && !parameters[names[name - 1]].is_a?(Integer)
+        parameters[names[name - 1]] = value
         parameters.delete(name)
       end
     }
@@ -127,7 +132,9 @@ class Namedic
         end
       }
     else
-      warn 'method parameters are not supported, use explicit namefication' if Namedic.warn?
+      if method.arity > 0
+        names.push(*(1 .. method.arity))
+      end
     end
 
     [names, options]
@@ -187,9 +194,9 @@ class Object
 
     method, names, options = Namedic.normalize(*args)
 
-    if instance_method(method).arity.abs != names.length
-      raise ArgumentError, 'method arity mismatch'
-    end
+    instance_method(method).tap {|m|
+      raise ArgumentError, 'method arity mismatch' if m.arity > 0 && m.arity != names.length
+    }
 
     refine_method method do |old, *args|
       old.call(*Namedic.arguments(names, options, *args))
@@ -214,10 +221,9 @@ class Object
 
     method, names, options = Namedic.normalize(*args)
 
-    if method(method).arity.abs != names.length
-      raise ArgumentError, 'method arity mismatc'
-    end
-
+    method(method).tap {|m|
+      raise ArgumentError, 'method arity mismatch' if m.arity > 0 && m.arity != names.length
+    }
 
     refine_singleton_method method do |old, *args|
       old.call(*Namedic.arguments(names, options, *args))
