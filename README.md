@@ -30,9 +30,9 @@ l = LOL.new
 l.lol                       # [1, 2, 3]
 l.lol(3, 2)                 # [3, 2, 3]
 l.lol(:a => true)           # [true, 2, 3]
-l.lol(:a true, :b => false) # [true, false, 3]
-l.lol(:a true, :c => false) # [true, nil, false]
-l.omg(:a true, :c => false) # [true, 2, false]
+l.lol(:a => true, :b => false) # [true, false, 3]
+l.lol(:a => true, :c => false) # [true, nil, false]
+l.omg(:a => true, :c => false) # [true, 2, false]
 l.wat(1, 2)                 # [1, 2]
 l.wat(:b => 2, :a => 1)     # [1, 2] on 1.9, exception on 1.8
 l.wat(2 => 2, 1 => 1)       # [1, 2] on 1.8 too
