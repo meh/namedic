@@ -13,6 +13,16 @@
 require 'refining'
 
 class Namedic
+  @warn = true
+
+  def self.warn (value)
+    @warn = value
+  end
+
+  def self.warn?
+    @warn
+  end
+
   def initialize (name)
     @name = name.to_sym
   end
@@ -42,9 +52,13 @@ class Namedic
     }
 
     # check for missing required parameters
-    (names - parameters.keys - options[:optional].map { |param| param.is_a?(Hash) ? param.keys : param }.flatten.compact).tap {|required|
+    (names - parameters.keys - options[:optional].keys).tap {|required|
       raise ArgumentError, "the following required parameters are missing: #{required.join(', ')}" unless required.empty?
-    }
+    } unless options[:optional] == true
+
+    all_optional_after = names.length - names.reverse.take_while {|name|
+      options[:optional].has_key?(name) && !parameters[name]
+    }.length
 
     # fill the arguments array
     # TODO: try to not add nil for the last optional parameters
@@ -56,7 +70,15 @@ class Namedic
           args << parameters[name]
         end
       else
-        args << nil
+        if index < all_optional_after
+          warn 'keep in mind that optionals between two arguments will have nil as value' if Namedic.warn?
+        end
+
+        if options[:optional][name].nil? && index >= all_optional_after
+          break
+        end
+
+        args << options[:optional][name]
       end
     }
 
@@ -80,7 +102,7 @@ class Namedic
         end
       }
     else
-      warn 'method parameters are not supported, use explicit namefication'
+      warn 'method parameters are not supported, use explicit namefication' if Namedic.warn?
     end
 
     [names, options]
@@ -147,6 +169,14 @@ class Object
     method = args.shift.to_sym
     names  = args
 
+    options[:optional] = Hash[(options[:optional] == true ? names : options[:optional]).map {|opt|
+      if opt.is_a?(Hash)
+        [opt.to_a]
+      else
+        [[opt, nil]]
+      end
+    }.flatten(1)]
+
     refine_method method do |old, *args|
       old.call(*Namedic.arguments(names, options, *args))
     end
@@ -176,6 +206,14 @@ class Object
 
     method = args.shift.to_sym
     names  = args
+
+    options[:optional] = Hash[(options[:optional] == true ? names : options[:optional]).map {|opt|
+      if opt.is_a?(Hash)
+        [opt.to_a]
+      else
+        [[opt, nil]]
+      end
+    }.flatten(1)]
 
     refine_singleton_method method do |old, *args|
       old.call(*Namedic.arguments(names, options, *args))
