@@ -187,6 +187,10 @@ class Object
 
     method, names, options = Namedic.normalize(*args)
 
+    if instance_method(method).arity.abs != names.length
+      raise ArgumentError, "method's arity is #{method(method).arity.abs} instead of #{names.length}"
+    end
+
     refine_method method do |old, *args|
       old.call(*Namedic.arguments(names, options, *args))
     end
@@ -209,6 +213,11 @@ class Object
     @@__to_namedify__ = false
 
     method, names, options = Namedic.normalize(*args)
+
+    if method(method).arity.abs != names.length
+      raise ArgumentError, "method's arity is #{method(method).arity.abs} instead of #{names.length}"
+    end
+
 
     refine_singleton_method method do |old, *args|
       old.call(*Namedic.arguments(names, options, *args))
