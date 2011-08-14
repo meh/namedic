@@ -188,7 +188,7 @@ class Object
     method, names, options = Namedic.normalize(*args)
 
     if instance_method(method).arity.abs != names.length
-      raise ArgumentError, "method's arity is #{method(method).arity.abs} instead of #{names.length}"
+      raise ArgumentError, 'method arity mismatch'
     end
 
     refine_method method do |old, *args|
@@ -215,7 +215,7 @@ class Object
     method, names, options = Namedic.normalize(*args)
 
     if method(method).arity.abs != names.length
-      raise ArgumentError, "method's arity is #{method(method).arity.abs} instead of #{names.length}"
+      raise ArgumentError, 'method arity mismatc'
     end
 
 
