@@ -1,16 +1,17 @@
 #! /usr/bin/env ruby
 require 'rubygems'
 require 'namedic'
+require 'ap'
 
-describe 'namedic' do
-  before do
-    namedic :a, :b, :optional => [:b]
-    def lol (a, b=nil)
-      [a, b]
-    end
+class LOL
+  singleton_namedic :a, :b, :optional => [:b]
+  def self.omg (a, b=nil)
+    [a, b]
   end
+end
 
-  it 'works with simple namification' do
-    lol(2).should == lol(:a => 2)
+describe Namedic do
+  it 'works with explicit class notification' do
+    LOL.omg(2, 3).should == LOL.omg(:a => 2, :b => 3)
   end
 end
