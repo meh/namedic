@@ -31,6 +31,31 @@ class Namedic
     @name
   end
 
+  def self.normalize (*args)
+    options = Hash[
+      :optional => [],
+      :alias    => {},
+      :rest     => []
+    ].merge(args.last.is_a?(Hash) ? args.pop : {})
+
+    method = args.shift.to_sym
+    names  = args
+
+    options[:optional] = Hash[if options[:optional].is_a?(Range)
+      names[options[:optional]]
+    else
+      options[:optional]
+    end.map {|opt|
+      if opt.is_a?(Hash)
+        [opt.to_a]
+      else
+        [[opt, nil]]
+      end
+    }.flatten(1)]
+
+    return method, names, options
+  end
+
   def self.arguments (names, options, *args)
     return args if (args.length != 1 || !args.first.is_a?(Hash)) || (options[:rest] && !args.last.is_a?(Hash))
 
@@ -57,7 +82,7 @@ class Namedic
     } unless options[:optional] == true
 
     all_optional_after = names.length - names.reverse.take_while {|name|
-      options[:optional].has_key?(name) && !parameters[name]
+      options[:optional].has_key?(name) && !parameters.has_key?(name)
     }.length
 
     # fill the arguments array
@@ -160,22 +185,7 @@ class Object
 
     @__to_namedify__ = false
 
-    options = Hash[
-      :optional => [],
-      :alias    => {},
-      :rest     => []
-    ].merge(args.last.is_a?(Hash) ? args.pop : {})
-
-    method = args.shift.to_sym
-    names  = args
-
-    options[:optional] = Hash[(options[:optional] == true ? names : options[:optional]).map {|opt|
-      if opt.is_a?(Hash)
-        [opt.to_a]
-      else
-        [[opt, nil]]
-      end
-    }.flatten(1)]
+    method, names, options = Namedic.normalize(*args)
 
     refine_method method do |old, *args|
       old.call(*Namedic.arguments(names, options, *args))
@@ -198,22 +208,7 @@ class Object
 
     @@__to_namedify__ = false
 
-    options = Hash[
-      :optional => [],
-      :alias    => {},
-      :rest     => []
-    ].merge(args.last.is_a?(Hash) ? args.pop : {})
-
-    method = args.shift.to_sym
-    names  = args
-
-    options[:optional] = Hash[(options[:optional] == true ? names : options[:optional]).map {|opt|
-      if opt.is_a?(Hash)
-        [opt.to_a]
-      else
-        [[opt, nil]]
-      end
-    }.flatten(1)]
+    method, names, options = Namedic.normalize(*args)
 
     refine_singleton_method method do |old, *args|
       old.call(*Namedic.arguments(names, options, *args))
