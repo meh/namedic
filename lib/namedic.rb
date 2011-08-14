@@ -67,17 +67,21 @@ class Namedic
     names   = []
     options = { :rest => [], :optional => [] }
 
-    method.parameters.map {|how, name|
-      if name
-        names << name
-        
-        options[:optional] << name if how == :opt
-        options[:rest]     << name if how == :rest
-      else
-        names          << rand.to_s
-        options[:rest] << names.last
-      end
-    }
+    if method.respond_to? :parameters
+      method.parameters.map {|how, name|
+        if name
+          names << name
+          
+          options[:optional] << name if how == :opt
+          options[:rest]     << name if how == :rest
+        else
+          names          << rand.to_s
+          options[:rest] << names.last
+        end
+      }
+    else
+      warn 'method parameters are not supported, use explicit namefication'
+    end
 
     [names, options]
   end
@@ -124,14 +128,13 @@ class Object
     raise ArgumentError, 'you have to pass at least one argument' if args.length == 0
 
     if args.first.nil?
-      return unless @__namedic_last_method__
-
-      names, options = Namedic.definition(instance_method(@__namedic_last_method__))
-
-      return namedic(@__namedic_last_method__, *(names + [options]))
+      if @__namedic_last_method__
+        names, options = Namedic.definition(instance_method(@__namedic_last_method__))
+        namedic(Namedic.new(@__namedic_last_method__), *(names + [options]))
+      end; true
     elsif !args.first.is_a?(Namedic)
-      return @__to_namedify__ = args
-    end
+      @__to_namedify__ = args
+    end and return
 
     @__to_namedify__ = false
 
@@ -147,20 +150,21 @@ class Object
     refine_method method do |old, *args|
       old.call(*Namedic.arguments(names, options, *args))
     end
+
+    nil
   end; alias named namedic
 
   def singleton_namedic (*args)
     raise ArgumentError, 'you have to pass at least one argument' if args.length == 0
 
     if args.first.nil?
-      return unless @@__namedic_last_method__
-
-      names, options = Namedic.definition(method(@@__namedic_last_method__))
-
-      return singleton_namedic(@@__namedic_last_method__, *(names + [options]))
+      if defined?(@@__namedic_last_method__) && @@__namedic_last_method__
+        names, options = Namedic.definition(method(@@__namedic_last_method__))
+        singleton_namedic(Namedic.new(@@__namedic_last_method__), *(names + [options]))
+      end; true
     elsif !args.first.is_a?(Namedic)
-      return @@__to_namedify__ = args
-    end
+      @@__to_namedify__ = args
+    end and return
 
     @@__to_namedify__ = false
 
@@ -176,5 +180,7 @@ class Object
     refine_singleton_method method do |old, *args|
       old.call(*Namedic.arguments(names, options, *args))
     end
+
+    nil
   end
 end
