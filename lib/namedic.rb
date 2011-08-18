@@ -198,8 +198,8 @@ class Object
       raise ArgumentError, 'method arity mismatch' if m.arity > 0 && m.arity != names.length
     }
 
-    refine_method method do |old, *args|
-      old.call(*Namedic.arguments(names, options, *args))
+    refine_method method do |old, *args, &block|
+      old.call(*Namedic.arguments(names, options, *args), &block)
     end
 
     nil
@@ -225,8 +225,8 @@ class Object
       raise ArgumentError, 'method arity mismatch' if m.arity > 0 && m.arity != names.length
     }
 
-    refine_singleton_method method do |old, *args|
-      old.call(*Namedic.arguments(names, options, *args))
+    refine_singleton_method method do |old, *args, &block|
+      old.call(*Namedic.arguments(names, options, *args), &block)
     end
 
     nil

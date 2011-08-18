@@ -11,6 +11,10 @@ class LOL
   namedic def lol (a)
     a
   end
+
+  namedic def omg (&block)
+    block
+  end
 end
 
 describe Namedic do
@@ -20,5 +24,9 @@ describe Namedic do
 
   it 'works with auto namedification' do
     LOL.new.lol(:a => 2).should == LOL.new.lol(2)
+  end
+
+  it 'works passes the block correctly' do
+    LOL.new.omg{}.should_not == nil
   end
 end
