@@ -9,6 +9,6 @@ Gem::Specification.new {|s|
 	s.files        = Dir.glob('lib/**/*.rb')
 	s.require_path = 'lib'
 
-	s.add_development_depency 'rake'
-	s.add_development_depency 'rspec'
+	s.add_development_dependency 'rake'
+	s.add_development_dependency 'rspec'
 }
