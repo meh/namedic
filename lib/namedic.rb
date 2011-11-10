@@ -152,7 +152,9 @@ module Kernel
 end
 
 class Module
-	refine_method :method_added do |old, name|
+	refine_method :method_added, prefix: '__namedic' do |name|
+		next if name == 'temporary method for refining'
+
 		@__namedic_last_method__ = name
 	
 		if @__to_namedify__
@@ -161,19 +163,21 @@ class Module
 			namedic(nil)
 		end
 		
-		old.call(name)
+		__namedic_method_added(name)
 	end
 
-	refine_method :singleton_method_added do |old, name|
-		@@__namedic_last_method__ = name
+	refine_method :singleton_method_added, prefix: '__namedic' do |name|
+		next if name == 'temporary method for refining'
+
+		@__singleton_namedic_last_method__ = name
 	
-		if defined?(@@__to_namedify__) && @@__to_namedify__
-			singleton_namedic(Namedic.new(@@__namedic_last_method__), *@@__to_namedify__)
+		if @__to_singleton_namedify__
+			singleton_namedic(Namedic.new(@__singleton_namedic_last_method__), *@__to_singleton_namedify__)
 		elsif always_namedic?
 			singleton_namedic(nil)
 		end
 		
-		old.call(name)
+		__namedic_singleton_method_added(name)
 	end
 end
 
@@ -184,6 +188,7 @@ class Object
 		if args.first.nil?
 			if @__namedic_last_method__
 				names, options = Namedic.definition(instance_method(@__namedic_last_method__))
+
 				namedic(Namedic.new(@__namedic_last_method__), *(names + [options]))
 			end; true
 		elsif !args.first.is_a?(Namedic)
@@ -198,8 +203,10 @@ class Object
 			raise ArgumentError, 'method arity mismatch' if m.arity > 0 && m.arity != names.length
 		}
 
-		refine_method method do |old, *args, &block|
-			old.call(*Namedic.arguments(names, options, *args), &block)
+		to_call = "__namedic_#{method}"
+
+		refine_method method, :prefix => '__namedic' do |*args, &block|
+			__send__ *([to_call] + Namedic.arguments(names, options, *args)), &block
 		end
 
 		nil
@@ -209,15 +216,16 @@ class Object
 		raise ArgumentError, 'you have to pass at least one argument' if args.length == 0
 
 		if args.first.nil?
-			if defined?(@@__namedic_last_method__) && @@__namedic_last_method__
-				names, options = Namedic.definition(method(@@__namedic_last_method__))
-				singleton_namedic(Namedic.new(@@__namedic_last_method__), *(names + [options]))
+			if @__singleton_namedic_last_method__
+				names, options = Namedic.definition(method(@__singleton_namedic_last_method__))
+
+				singleton_namedic(Namedic.new(@__singleton_namedic_last_method__), *(names + [options]))
 			end; true
 		elsif !args.first.is_a?(Namedic)
-			@@__to_namedify__ = args
+			@__to_singleton_namedify__ = args
 		end and return
 
-		@@__to_namedify__ = false
+		@__to_singleton_namedify__ = false
 
 		method, names, options = Namedic.normalize(*args)
 
@@ -225,8 +233,10 @@ class Object
 			raise ArgumentError, 'method arity mismatch' if m.arity > 0 && m.arity != names.length
 		}
 
-		refine_singleton_method method do |old, *args, &block|
-			old.call(*Namedic.arguments(names, options, *args), &block)
+		to_call = "__namedic_#{method}"
+
+		refine_singleton_method method, :prefix => '__namedic' do |*args, &block|
+			__send__ *([to_call] + Namedic.arguments(names, options, *args)), &block
 		end
 
 		nil
