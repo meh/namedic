@@ -5,7 +5,7 @@ Gem::Specification.new {|s|
 	s.email        = 'meh@paranoici.org'
 	s.homepage     = 'http://github.com/meh/namedic'
 	s.platform     = Gem::Platform::RUBY
-	s.summary      = 'Plain stupid named parameters'
+	s.summary      = 'Plain stupid named parameters. Moved to https://github.com/meh/ruby-call-me'
 	s.files        = Dir.glob('lib/**/*.rb')
 	s.require_path = 'lib'
 

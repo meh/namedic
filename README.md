@@ -1,6 +1,8 @@
 Namedic -- named parameters in Ruby, again
 ==========================================
 
+**GEM MERGED INTO CALL-ME, THIS IS UNMAINTAINED NOW: https://github.com/meh/ruby-call-me**
+
 Stupid and ugly named parameters.
 
 Some examples:
